@@ -8,14 +8,20 @@ require('dotenv').config();
 
 const app = express();
 
-app.use(cors());
+// Enable CORS for your frontend
+app.use(cors({
+    origin: ['http://localhost:5173', 'http://localhost:3000'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 app.get('/', (req, res) => {
     res.send('Rey Technologies API is Running');
 });
 
-// --- Contact form inquiries ---
+// --- Contact form inquiries (public) ---
 app.post('/api/inquiries', async (req, res) => {
     const { name, email, message } = req.body;
 
@@ -114,7 +120,7 @@ app.post('/api/newsletter', async (req, res) => {
     }
 });
 
-// --- Analytics: track a service view ---
+// --- Analytics: track a service view (public) ---
 app.post('/api/analytics/track', async (req, res) => {
     const { serviceId, serviceTitle } = req.body;
 
@@ -141,7 +147,8 @@ app.get('/api/analytics/summary', requireAuth, async (req, res) => {
             `SELECT service_id, service_title, COUNT(*) AS views
              FROM service_views
              GROUP BY service_id, service_title
-             ORDER BY views DESC`
+             ORDER BY views DESC
+             LIMIT 10`
         );
         res.json({ success: true, summary: result.rows });
     } catch (err) {
