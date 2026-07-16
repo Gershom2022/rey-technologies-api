@@ -9,7 +9,7 @@ require('dotenv').config();
 
 const app = express();
 
-// Enable CORS for your frontend
+// Enable CORS
 app.use(cors({
     origin: [
         'http://localhost:5173', 
@@ -31,11 +31,10 @@ app.get('/', (req, res) => {
 // CONTACT FORM INQUIRIES
 // =====================
 
-// --- Create inquiry (public) with email notifications ---
+// --- Create inquiry (public) ---
 app.post('/api/inquiries', async (req, res) => {
     const { name, email, message, phone, subject } = req.body;
 
-    // Validate required fields
     if (!name || !email || !message) {
         return res.status(400).json({
             success: false,
@@ -44,16 +43,14 @@ app.post('/api/inquiries', async (req, res) => {
     }
 
     try {
-        // Insert inquiry with additional fields (phone, subject)
         const result = await pool.query(
-            `INSERT INTO inquiries (name, email, message, phone, subject)
-             VALUES ($1, $2, $3, $4, $5)
+            `INSERT INTO inquiries (name, email, message, phone, subject, status)
+             VALUES ($1, $2, $3, $4, $5, 'pending')
              RETURNING *`,
             [name, email, message, phone || null, subject || null]
         );
 
-        // Fire and forget: Send email notifications (non-blocking)
-        // 1. Notify admin
+        // Send emails (fire and forget)
         emailService.sendContactNotification({
             name,
             email,
@@ -62,7 +59,6 @@ app.post('/api/inquiries', async (req, res) => {
             subject,
         }).catch(err => console.error('Admin notification email failed:', err));
 
-        // 2. Send confirmation to user
         emailService.sendConfirmationEmail(email, name, {
             name,
             email,
@@ -101,7 +97,7 @@ app.get('/api/inquiries', requireAuth, async (req, res) => {
     }
 });
 
-// --- Update inquiry (admin only) ---
+// --- Update inquiry fully (admin only) - PUT ---
 app.put('/api/inquiries/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const { name, email, phone, subject, message, status } = req.body;
@@ -109,11 +105,16 @@ app.put('/api/inquiries/:id', requireAuth, async (req, res) => {
     try {
         const result = await pool.query(
             `UPDATE inquiries 
-             SET name = $1, email = $2, phone = $3, subject = $4, 
-                 message = $5, status = $6, updated_at = CURRENT_TIMESTAMP
+             SET name = $1, 
+                 email = $2, 
+                 phone = $3, 
+                 subject = $4, 
+                 message = $5, 
+                 status = $6,
+                 updated_at = CURRENT_TIMESTAMP
              WHERE id = $7
              RETURNING *`,
-            [name, email, phone, subject, message, status, id]
+            [name, email, phone || null, subject || null, message, status, id]
         );
 
         if (result.rows.length === 0) {
@@ -125,7 +126,8 @@ app.put('/api/inquiries/:id', requireAuth, async (req, res) => {
 
         res.json({ 
             success: true, 
-            inquiry: result.rows[0] 
+            inquiry: result.rows[0],
+            message: 'Inquiry updated successfully'
         });
     } catch (err) {
         console.error('Error updating inquiry:', err);
@@ -136,7 +138,7 @@ app.put('/api/inquiries/:id', requireAuth, async (req, res) => {
     }
 });
 
-// --- Mark an inquiry as contacted (admin only) ---
+// --- Mark inquiry as contacted (admin only) - PATCH ---
 app.patch('/api/inquiries/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     try {
@@ -155,7 +157,8 @@ app.patch('/api/inquiries/:id', requireAuth, async (req, res) => {
         }
         res.json({ 
             success: true, 
-            inquiry: result.rows[0] 
+            inquiry: result.rows[0],
+            message: 'Inquiry marked as contacted'
         });
     } catch (err) {
         console.error('Error updating inquiry:', err);
@@ -166,7 +169,7 @@ app.patch('/api/inquiries/:id', requireAuth, async (req, res) => {
     }
 });
 
-// --- Delete an inquiry (admin only) ---
+// --- Delete inquiry (admin only) ---
 app.delete('/api/inquiries/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     try {
@@ -180,7 +183,10 @@ app.delete('/api/inquiries/:id', requireAuth, async (req, res) => {
                 error: 'Inquiry not found' 
             });
         }
-        res.json({ success: true });
+        res.json({ 
+            success: true,
+            message: 'Inquiry deleted successfully'
+        });
     } catch (err) {
         console.error('Error deleting inquiry:', err);
         res.status(500).json({ 
@@ -194,7 +200,6 @@ app.delete('/api/inquiries/:id', requireAuth, async (req, res) => {
 // NEWSLETTER SUBSCRIBERS
 // =====================
 
-// --- Subscribe to newsletter ---
 app.post('/api/newsletter', async (req, res) => {
     const { email } = req.body;
 
@@ -213,7 +218,6 @@ app.post('/api/newsletter', async (req, res) => {
             [email]
         );
 
-        // Send welcome email (fire and forget)
         emailService.sendNewsletterWelcome(email)
             .catch(err => console.error('Newsletter welcome email failed:', err));
 
@@ -241,7 +245,6 @@ app.post('/api/newsletter', async (req, res) => {
 // ANALYTICS
 // =====================
 
-// --- Track a service view (public) ---
 app.post('/api/analytics/track', async (req, res) => {
     const { serviceId, serviceTitle } = req.body;
 
@@ -268,7 +271,6 @@ app.post('/api/analytics/track', async (req, res) => {
     }
 });
 
-// --- Analytics summary for dashboard charts (admin only) ---
 app.get('/api/analytics/summary', requireAuth, async (req, res) => {
     try {
         const result = await pool.query(
@@ -295,7 +297,6 @@ app.get('/api/analytics/summary', requireAuth, async (req, res) => {
 // AUTHENTICATION
 // =====================
 
-// --- Admin login ---
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
 
@@ -354,7 +355,6 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// --- Verify token / get current admin ---
 app.get('/api/admin/me', requireAuth, async (req, res) => {
     res.json({ 
         success: true, 
@@ -366,7 +366,6 @@ app.get('/api/admin/me', requireAuth, async (req, res) => {
 // ERROR HANDLING
 // =====================
 
-// 404 handler for undefined routes
 app.use((req, res) => {
     res.status(404).json({ 
         success: false, 
@@ -374,7 +373,6 @@ app.use((req, res) => {
     });
 });
 
-// Global error handler
 app.use((err, req, res, next) => {
     console.error('Global error:', err);
     res.status(500).json({ 
