@@ -1,7 +1,6 @@
-// src/validation.js
+// validation.js - Updated
 const Joi = require('joi');
 
-// Inquiry validation schema
 const inquirySchema = Joi.object({
     name: Joi.string()
         .min(2)
@@ -28,9 +27,13 @@ const inquirySchema = Joi.object({
             'string.pattern.base': 'Please provide a valid phone number'
         }),
     
-    subject: Joi.string()
+    subject: Joi.string() // ← Subject is optional
         .max(200)
-        .allow('', null),
+        .allow('', null)
+        .default('General Inquiry')
+        .messages({
+            'string.max': 'Subject cannot exceed 200 characters'
+        }),
     
     message: Joi.string()
         .min(10)
@@ -43,19 +46,4 @@ const inquirySchema = Joi.object({
         })
 });
 
-// Admin login validation
-const loginSchema = Joi.object({
-    username: Joi.string().required(),
-    password: Joi.string().min(6).required()
-});
-
-// Newsletter validation
-const newsletterSchema = Joi.object({
-    email: Joi.string().email().required()
-});
-
-module.exports = {
-    inquirySchema,
-    loginSchema,
-    newsletterSchema
-};
+module.exports = { inquirySchema, loginSchema, newsletterSchema };
