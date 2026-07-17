@@ -15,6 +15,20 @@ require('dotenv').config();
 const app = express();
 
 // =====================
+// CORS - MUST BE FIRST
+// =====================
+app.use(cors({
+    origin: [
+        'http://localhost:5173', 
+        'http://localhost:3000', 
+        'https://rey-technologies.vercel.app'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// =====================
 // SECURITY MIDDLEWARE
 // =====================
 
@@ -72,18 +86,6 @@ const loginLimiter = rateLimit({
     skipSuccessfulRequests: true,
 });
 app.use('/api/auth/login', loginLimiter);
-
-// 4. CORS configuration
-app.use(cors({
-    origin: [
-        'http://localhost:5173', 
-        'http://localhost:3000', 
-        'https://rey-technologies.vercel.app'
-    ],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
 
 app.use(express.json());
 
