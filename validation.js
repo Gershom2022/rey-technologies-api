@@ -27,7 +27,7 @@ const inquirySchema = Joi.object({
             'string.pattern.base': 'Please provide a valid phone number'
         }),
     
-    subject: Joi.string() // ← Subject is optional
+    subject: Joi.string()
         .max(200)
         .allow('', null)
         .default('General Inquiry')
@@ -43,6 +43,37 @@ const inquirySchema = Joi.object({
             'string.min': 'Message must be at least 10 characters',
             'string.max': 'Message cannot exceed 5000 characters',
             'any.required': 'Message is required'
+        })
+});
+
+const loginSchema = Joi.object({
+    username: Joi.string()
+        .min(3)
+        .max(50)
+        .required()
+        .messages({
+            'string.min': 'Username must be at least 3 characters',
+            'string.max': 'Username cannot exceed 50 characters',
+            'any.required': 'Username is required'
+        }),
+
+    password: Joi.string()
+        .min(6)
+        .max(100)
+        .required()
+        .messages({
+            'string.min': 'Password must be at least 6 characters',
+            'any.required': 'Password is required'
+        })
+});
+
+const newsletterSchema = Joi.object({
+    email: Joi.string()
+        .email()
+        .required()
+        .messages({
+            'string.email': 'Please provide a valid email address',
+            'any.required': 'Email is required'
         })
 });
 
